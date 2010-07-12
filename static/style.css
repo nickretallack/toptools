@@ -1,7 +1,13 @@
-html {margin:5ex auto; max-width:800px; font-family: 'Crimson Text', arial, serif; font-size:20pt}
-input, button {font-size:inherit; font-family:inherit;}
-input {width:80%}
+html {margin:5ex auto; width:800px; font-family: 'Crimson Text', arial, serif; font-size:20pt}
+body {margin:0}
+input[type=text], button {font-size:inherit; font-family:inherit;}
+input[type=text] {width:80%}
 button {width:15%}
 h1 {font-size:40pt}
 a {color:blue; text-decoration:none}
+.smallnote {display:block; font-size:14pt; color:#666}
 
+
+.left_half {margin-right:5px}
+.right_half {margin-left:5px}
+.left_half, .right_half {width:370px; display:inline-block; vertical-align:top}

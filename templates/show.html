@@ -1,12 +1,40 @@
 {% extends 'layout.html' %}
+{% block head %}
+  <script>
+  $(document).ready(function(){
+        var data = {{ tool_texts|safe }}
+        $("#tool").autocomplete(data);
+  });
+  </script>
+{% endblock%}
 {% block body %}
 <h1>{{ question['text'] }}</h1>
 
 <h2>Suggest a Tool</h2>
 <form method="post" action="{{ url_for('associate_tool', question_id=question['_id']) }}">
-    <input type="text" name="tool">
+    <input type="text" name="tool" id="tool">
     <button>Add Tool</button>
 </form>
 
+<div class="left_half">
+<h2>Best Tools</h2>
+<ul id="tools">
+{% for tool in question['tools'] %}
+<li>{{ tool.name }}
+<div class="smallnote">
+    <label for="used_{{tool.name}}">
+        <input type="checkbox" id="used_{{tool.name}}" name="used" value="{{tool.name}}">
+        I've used this</label>
+</div>
+{% endfor %}
+</ul>
+</div>
 
+<div class="right_half">
+<h2>Your Faves</h2>
+<ul id="fave_tools">
+
+
+</ul>
+</div>
 {% endblock %}

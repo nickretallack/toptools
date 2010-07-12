@@ -3,14 +3,6 @@ from slugify import slugify
 import json
 app = Flask(__name__)
 
-#from sqlalchemy import create_engine, MetaData
-#engine = create_engine('mysql://', convert_unicode=True)
-#metadata = MetaData(bind=engine
-
-
-
-PASSWORD = '5spoons'
-
 import pymongo
 from pymongo.objectid import ObjectId
 
@@ -20,13 +12,10 @@ questions = db.questions
 tools = db.tools
 question_tools = db.question_tools
 
-
-#def question_texts():
-#    all_questions = questions.find()
-#    texts = [question.text for question in all_questions]
-#    return json.dumps[texts]
-
-
+@app.after_request
+def close_mongo_session(response):
+    db_connection.end_request()
+    return response
 
 
 
@@ -57,29 +46,45 @@ def create():
 @app.route('/<id>/<slug>')
 def show(id, slug):
     question = questions.find_one({'_id':ObjectId(id)})
-
-    return render_template('show.html', question=question)
+    all_tools = list(tools.find())
+    tool_texts = json.dumps([tool['name'] for tool in all_tools])
+    return render_template('show.html', question=question, tool_texts=tool_texts)
 
 
 @app.route('/associate_tool/<question_id>', methods=['POST'])
 def associate_tool(question_id):
-    question = questions.find_one({'_id':ObjectId(id)})
+    question = questions.find_one({'_id':ObjectId(question_id)})
     if not question:
         abort(400)
-
-    # create the tool
+    
+    # create the tool if it doesn't exist
     tool_name = request.form['tool']
-    tool = {'name': tool_name}
-    tools.insert(tool)
+    if tool_name:
+        tool = tools.find_one({'name':tool_name})
+        if not tool:
+            tool = {'name': tool_name}
+            tools.insert(tool)
 
-    # Automatically vote that this tool is related to this question
-    question_tool = {'tool':tool['_id'], 'question':question['_id']}
-    question_tools.insert(question_tool)
+        # associate it with the question
+        if 'tools' not in question:
+            question['tools'] = []
+
+        if not question_has_tool(question, tool):
+            question['tools'].append({'id':tool['_id'], 'name':tool['name']})
+            questions.save(question)
+    
     return redirect(question_url(question))
 
 
 def question_url(question):
     return url_for('show', id=question['_id'], slug=question['slug'])
+
+def question_has_tool(question, tool):
+    for item in question['tools']:
+        if 'name' in item and 'name' in tool and item['name'] == tool['name']:
+            return True
+    return False
+
 
 
 app.jinja_env.globals['question_url'] = question_url
