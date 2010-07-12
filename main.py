@@ -1,27 +1,48 @@
 from flask import Flask, render_template, request, redirect, url_for, abort
+from flaskext.sqlalchemy import SQLAlchemy
 from slugify import slugify
 import json
+
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:5sporks/bestlibs'
+db = SQLAlchemy(app)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode(80))
+
+class Question(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Unicode(255))
+    slug = db.Column(db.Unicode(255))
+
+    def __init__(self, text):
+        self.text = text
+        self.slug = slugify(text)
+
+    @property
+    def url(self):
+        return url_for('show', id=self.id, slug=self.slug)
+
+
+class Tool(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.Unicode(80))
+
+class Affinity(db.Model):
+    user_id = db.Column(db.Integer, ForeignKey(User.id), primary_key=True)
+    question_id = db.Column(db.Integer, ForeignKey(Question.id), primary_key=True)
+    tool_id = db.Column(db.Integer, ForeignKey(Tool.id), primary_key=True)
+    position = db.Column(db.Integer)
+
 
 import pymongo
 from pymongo.objectid import ObjectId
 
-db_connection = pymongo.Connection()
-db = db_connection['bestlibs']
-questions = db.questions
-tools = db.tools
-question_tools = db.question_tools
-
-@app.after_request
-def close_mongo_session(response):
-    db_connection.end_request()
-    return response
-
-
 
 @app.route('/')
 def front():
-    all_questions = list(questions.find())
+    all_questions = Question.query.all()
     question_texts = json.dumps([question['text'] for question in all_questions])
     print question_texts
     return render_template('front.html', popular_questions=all_questions, question_texts=question_texts)
@@ -37,10 +58,9 @@ def search():
 @app.route('/create', methods=['POST'])
 def create():
     question_text = request.form['question']
-    slug = slugify(question_text)
-    question = {'text': question_text, 'slug':slug}
-    questions.insert(question)
-    return redirect(question_url(question))
+    question = Question(question_text)
+    session.add(question)
+    return redirect(question.url)
 
 
 @app.route('/<id>/<slug>')
