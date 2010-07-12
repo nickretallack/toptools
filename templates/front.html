@@ -1,0 +1,32 @@
+{% extends 'layout.html' %}
+{% block head %}
+  <script>
+  $(document).ready(function(){
+        var data = {{ question_texts|safe }}
+        $("#ask").autocomplete(data);
+  });
+  </script>
+
+
+
+{% endblock%}
+{% block body %}
+<h1>What's the Best Tool for the Job?</h1>
+
+<p>You want to start a project, but first you need to pick the right tools.  Unfortunately, there are so many of them!  What should you try first?
+
+<p>Our goal is to compile a list of the best tools for any given task, based on popular opinion.  It should give you a good idea of what to try first, and ensure you're not overlooking something awesome.
+
+<h2>Ask a Question</h2>
+<form method="get" action="{{ url_for('search') }}">
+    <input type="text" name="q" id="ask">
+    <button>Ask</button>
+</form>
+<h2>Popular Questions</h2>
+<ul>
+{% for question in popular_questions %}
+<li><a href="{{ question_url(question) }}">{{ question['text'] }}</a>
+{% endfor %}
+</ul>
+
+{% endblock %}

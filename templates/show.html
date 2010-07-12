@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+{% block body %}
+<h1>{{ question['text'] }}</h1>
+
+<h2>Suggest a Tool</h2>
+<form method="post" action="{{ url_for('associate_tool', question_id=question['_id']) }}">
+    <input type="text" name="tool">
+    <button>Add Tool</button>
+</form>
+
+
+{% endblock %}

@@ -1,0 +1,7 @@
+html {margin:5ex auto; max-width:800px; font-family: 'Crimson Text', arial, serif; font-size:20pt}
+input, button {font-size:inherit; font-family:inherit;}
+input {width:80%}
+button {width:15%}
+h1 {font-size:40pt}
+a {color:blue; text-decoration:none}
+
