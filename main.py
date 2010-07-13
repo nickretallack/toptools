@@ -1,17 +1,21 @@
 from flask import Flask, render_template, request, redirect, url_for, abort
 from flaskext.sqlalchemy import SQLAlchemy
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import relationship, backref
 from slugify import slugify
 import json
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:5sporks/bestlibs'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:5spoons@localhost/bestlibs'
 db = SQLAlchemy(app)
 
 class User(db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(80))
 
 class Question(db.Model):
+    __tablename__ = 'questions'
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Unicode(255))
     slug = db.Column(db.Unicode(255))
@@ -24,12 +28,13 @@ class Question(db.Model):
     def url(self):
         return url_for('show', id=self.id, slug=self.slug)
 
-
 class Tool(db.Model):
+    __tablename__ = 'tools'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(80))
 
-class Affinity(db.Model):
+class Answer(db.Model):
+    __tablename__ = 'answers'
     user_id = db.Column(db.Integer, ForeignKey(User.id), primary_key=True)
     question_id = db.Column(db.Integer, ForeignKey(Question.id), primary_key=True)
     tool_id = db.Column(db.Integer, ForeignKey(Tool.id), primary_key=True)
@@ -65,9 +70,9 @@ def create():
 
 @app.route('/<id>/<slug>')
 def show(id, slug):
-    question = questions.find_one({'_id':ObjectId(id)})
-    all_tools = list(tools.find())
-    tool_texts = json.dumps([tool['name'] for tool in all_tools])
+    question = Question.get(id) #questions.find_one({'_id':ObjectId(id)})
+    all_tools = Tool.query.all() #list(tools.find())
+    tool_texts = json.dumps([tool.name for tool in all_tools])
     return render_template('show.html', question=question, tool_texts=tool_texts)
 
 
