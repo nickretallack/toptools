@@ -1,25 +1,66 @@
 {% extends 'layout.html' %}
 {% block head %}
-  <script>
-  $(document).ready(function(){
-        var data = {{ tool_texts|safe }}
-        $("#tool").autocomplete(data);
-  });
-  </script>
+<script>
+$(document).ready(function(){
+    var data = {{ tool_texts|safe }}
+    var tool_field = $("#tool")
+    var fave_tools = $('#fave_tools')
+    var tool_template = tmpl("your_tool_template")
+    var answer_url = "{{ url_for('answer',question_id=question.id)}}"
+
+    tool_field.autocomplete(data);
+    fave_tools.sortable()
+
+    $("#suggest-tool").submit(function(event){
+        event.preventDefault()
+
+        var tool_name = tool_field.val()
+        tool_field.val('')
+        var node = tool_template({name:tool_name})
+        fave_tools.append(node)
+    })
+
+    $('#save').click(function(event){
+        event.preventDefault()
+        var tool_nodes = fave_tools.find('.tool').toArray()
+        var tool_list = _.map(tool_nodes, function(node){
+            return $(node).text()
+        })
+        var data = JSON.stringify(tool_list)
+        $.ajax({url:answer_url, data:data, type:'POST', contentType:'application/json'})
+        console.debug(tool_list)
+    })
+
+    $('.remove').live('click', function(event){
+        event.preventDefault()
+        $(this).parents('li').remove()
+    })
+
+});
+</script>
+
+<script type="text/html" id="your_tool_template">
+    <li><a class="remove">x</a> <span class="tool"><%= name %></span>
+</script>
+
 {% endblock%}
 {% block body %}
-<h1>{{ question['text'] }}</h1>
+<h1>{{ question['text'] }} <span class="little"><a href="{{question.edit_url}}">Edit</a></span></h1>
+<p>To answer this question, suggest tools you have used for this task and arrange them into the order of your preference.</p>
+
+<button id="save">Save</button> when you are finished editing.
 
 <h2>Suggest a Tool</h2>
-<form method="post" action="{{ url_for('associate_tool', question_id=question['_id']) }}">
+<form id="suggest-tool" method="post" action="{{ url_for('associate_tool', question_id=question.id) }}">
     <input type="text" name="tool" id="tool">
     <button>Add Tool</button>
 </form>
 
 <div class="left_half">
 <h2>Best Tools</h2>
-<ul id="tools">
-{% for tool in question['tools'] %}
+TODO
+<ol id="tools">
+{% for tool in question.tools %}
 <li>{{ tool.name }}
 <div class="smallnote">
     <label for="used_{{tool.name}}">
@@ -27,14 +68,16 @@
         I've used this</label>
 </div>
 {% endfor %}
-</ul>
+</ol>
 </div>
 
 <div class="right_half">
 <h2>Your Faves</h2>
-<ul id="fave_tools">
+<ol id="fave_tools" class="sortable">
+    {% for tool in your_answers %}
+    <li><a class="remove">x</a> <span class="tool">{{tool.name}}</span>
+    {% endfor %}
 
-
-</ul>
+</ol>
 </div>
 {% endblock %}

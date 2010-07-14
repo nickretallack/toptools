@@ -1,0 +1,10 @@
+Next Actions:
+    User Authentication
+        Webfinger?
+
+    Calculate Top Tools
+        Detormalized 'scores' table?
+
+    Wiki-like Revisions
+        Implement them like django-reversion does?
+

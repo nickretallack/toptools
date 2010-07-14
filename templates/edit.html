@@ -1,0 +1,12 @@
+{% extends 'layout.html' %}
+{% block body %}
+<h1>Editing Question: {{question.text}}</h1>
+<form method="post" action="{{ question.edit_url }}">
+    <input type="text" name="question" value="{{question.text}}">
+    <button type="submit" value="save" name="button">Save</button>
+    <button type="submit" value="delete" name="button">Delete</button>
+    <a href="{{question.url}}">Cancel</a>
+</form>
+
+
+{% endblock %}

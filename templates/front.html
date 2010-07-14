@@ -22,7 +22,7 @@
 <h2>Popular Questions</h2>
 <ul>
 {% for question in popular_questions %}
-<li><a href="{{ question_url(question) }}">{{ question['text'] }}</a>
+<li><a href="{{ question.url }}">{{ question.text }}</a>
 {% endfor %}
 </ul>
 

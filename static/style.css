@@ -11,3 +11,7 @@ a {color:blue; text-decoration:none}
 .left_half {margin-right:5px}
 .right_half {margin-left:5px}
 .left_half, .right_half {width:370px; display:inline-block; vertical-align:top}
+
+.sortable li {cursor:pointer}
+.remove {float:right}
+.little {font-size:20pt}
