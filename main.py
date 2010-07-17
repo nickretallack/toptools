@@ -10,7 +10,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:5sporks@localhost/bestlibs
 db = SQLAlchemy(app)
 
 import logging
-file_handler = logging.FileHandler("log.txt")
+file_handler = logging.FileHandler("log/log.txt")
 file_handler.setLevel(logging.DEBUG)
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.DEBUG)
@@ -138,38 +138,23 @@ def answer(question_id):
     return ''
 
 
-@app.route('/associate_tool/<question_id>', methods=['POST'])
-def associate_tool(question_id):
-    question = Question.query.get_or_404(question_id)
-    
-    # create the tool if it doesn't exist
-    tool_name = request.form['tool']
-    if tool_name:
-        tool = Tool.query.filter_by(name=tool_name).first()
-        if not tool:
-            tool = Tool(name=tool_name)
-            db.session.add(tool)
+from pywebfinger import finger
 
-        # TODO
-        # associate it with the question
-        if 'tools' not in question:
-            question['tools'] = []
 
-        if not question_has_tool(question, tool):
-            question['tools'].append({'id':tool['_id'], 'name':tool['name']})
-            questions.save(question)
-    
-    return redirect(question_url(question))
+@app.route('/login', methods=['POST'])
+def login():
+    email_address = request.form['email']
+    info = finger(email_address, True)
+    return info.open_id
+
+
 
 
 def question_url(question):
     return url_for('show', id=question['_id'], slug=question['slug'])
 
-def question_has_tool(question, tool):
-    for item in question['tools']:
-        if 'name' in item and 'name' in tool and item['name'] == tool['name']:
-            return True
-    return False
+
+
 
 
 

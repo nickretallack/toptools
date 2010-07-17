@@ -16,7 +16,13 @@
   {% endblock %}
 </head><body>
 <div id="menu">
-    <a href="{{ url_for('front')}}">Home</a>
+    <a href="{{ url_for('front')}}">Home</a> | Log in with <a href="http://webfinger.org">WebFinger</a>:
+
+    <form action="{{url_for('login')}}" method="post">
+    <input type="text" name="email" placeholder="Type in your email address">
+    <button>Log In</button>
+    </form>
+
 </div>
 {% block body %}
 {% endblock %}
