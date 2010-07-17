@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, abort, g
+from flask import Flask, request, session, g, redirect, abort, url_for, render_template, flash
 from flaskext.sqlalchemy import SQLAlchemy
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, backref
@@ -7,6 +7,7 @@ import json
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:5sporks@localhost/bestlibs'
+app.secret_key = "Secret key for testing purposes only"
 db = SQLAlchemy(app)
 
 import logging
@@ -18,7 +19,11 @@ app.logger.setLevel(logging.DEBUG)
 
 @app.before_request
 def set_current_user():
-    g.current_user = User.query.get(1)
+    if 'openid' in session:
+        openid = session['openid']
+        g.current_user = User.query.filter_by(openid=openid).first()
+    else:
+        g.current_user = None
 
 
 
@@ -26,6 +31,7 @@ class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(80))
+    openid = db.Column(db.Unicode(255))
 
 class Question(db.Model):
     __tablename__ = 'questions'
@@ -110,8 +116,13 @@ def show(id, slug=''):
     question = Question.query.get_or_404(id)
     all_tools = Tool.query.all()
     tool_texts = json.dumps([tool.name for tool in all_tools])
-    your_answers = Tool.query.join(Answer).filter(Answer.question_id==id).filter(Answer.user_id==g.current_user.id
+
+    if g.current_user:
+        your_answers = Tool.query.join(Answer).filter(Answer.question_id==id).filter(Answer.user_id==g.current_user.id
             ).order_by(Answer.position.asc()).all()
+    else:
+        your_answers = None
+
     return render_template('show.html', question=question, tool_texts=tool_texts, your_answers=your_answers)
 
 
@@ -139,13 +150,42 @@ def answer(question_id):
 
 
 from pywebfinger import finger
+from flaskext.openid import OpenID
+oid = OpenID('log')
 
 
-@app.route('/login', methods=['POST'])
+
+@app.route('/login', methods=['POST','GET'])
+@oid.loginhandler
 def login():
-    email_address = request.form['email']
-    info = finger(email_address, True)
-    return info.open_id
+#    if g.current_user is not None:
+#        return redirect(oid.get_next_url())
+    if request.method == 'POST':
+        email_address = request.form['email']
+        info = finger(email_address, True)
+        openid = info.open_id
+        return oid.try_login(openid, ask_for=['email', 'fullname', 'nickname'])
+    return oid.fetch_error()
+
+@oid.after_login
+def after_login(info):
+    openid = info.identity_url
+    session['openid'] = openid
+    user = User.query.filter_by(openid=openid).first()
+    if user is None:
+        name = info.nickname or info.fullname
+        user = User(name=name, openid=openid)
+        db.session.add(user)
+        db.session.commit()
+
+    flash(u'Successfully signed in')
+    return redirect(oid.get_next_url())
+
+@app.route('/logout')
+def logout():
+    session.pop('openid', None)
+    flash(u'You were signed out')
+    return redirect(oid.get_next_url())
 
 
 

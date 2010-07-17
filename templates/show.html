@@ -45,7 +45,14 @@ $(document).ready(function(){
 
 {% endblock%}
 {% block body %}
-<h1>{{ question['text'] }} <span class="little"><a href="{{question.edit_url}}">Edit</a></span></h1>
+<h1>{{ question['text'] }} <span class="little">
+        {% if g.current_user ==  question.user %}
+        <a href="{{question.edit_url}}">Edit</a>
+        {% endif %}
+</span></h1>
+{% if not g.current_user %}
+<p>If you would like to answer this question, please Log In above.</p>
+{% else %}
 <p>To answer this question, suggest tools you have used for this task and arrange them into the order of your preference.</p>
 
 <button id="save">Save</button> when you are finished editing.
@@ -55,6 +62,8 @@ $(document).ready(function(){
     <input type="text" name="tool" id="tool">
     <button>Add Tool</button>
 </form>
+
+{% endif %}
 
 <div class="left_half">
 <h2>Best Tools</h2>
@@ -71,6 +80,7 @@ TODO
 </ol>
 </div>
 
+{% if g.current_user %}
 <div class="right_half">
 <h2>Your Faves</h2>
 <ol id="fave_tools" class="sortable">
@@ -80,4 +90,5 @@ TODO
 
 </ol>
 </div>
+{% endif %}
 {% endblock %}

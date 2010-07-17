@@ -1,6 +1,6 @@
 Next Actions:
     User Authentication
-        Webfinger?
+        Webfinger? -- done!
 
     Calculate Top Tools
         Detormalized 'scores' table?

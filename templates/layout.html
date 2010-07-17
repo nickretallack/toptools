@@ -16,12 +16,20 @@
   {% endblock %}
 </head><body>
 <div id="menu">
-    <a href="{{ url_for('front')}}">Home</a> | Log in with <a href="http://webfinger.org">WebFinger</a>:
+    <a href="{{ url_for('front')}}">Home</a> | 
+    
+    {% if g.current_user %}
+    Logged in as {{g.current_user.name}}
+    | <a href="{{url_for('logout')}}">Log Out</a>
+    {% else %}
+    Log in with <a href="http://webfinger.org">WebFinger</a>:
 
     <form action="{{url_for('login')}}" method="post">
     <input type="text" name="email" placeholder="Type in your email address">
+    <input type="hidden" name="next" value="{{request.url}}">
     <button>Log In</button>
     </form>
+    {% endif %}
 
 </div>
 {% block body %}
