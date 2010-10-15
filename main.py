@@ -68,6 +68,50 @@ class Question(db.Model):
     def edit_url(self):
         return url_for('edit_question', id=self.id, slug=self.slug)
     
+    def save_answer(self, user, answers):
+        question = self
+
+        # delete existing answers for this user,question, and also the cached answers
+        db.session.query(Answer).filter_by(question=question, user=user).delete()
+        db.session.query(Answer).filter_by(question=question, user_id=0).delete()
+
+        for position, name in enumerate(answers):
+            # find or create the tool.
+            # NOTE: could speed this up by doing an 'IN' query earlier
+            tool = Tool.query.filter_by(name=name).first()
+            if not tool:
+                tool = Tool(name=name)
+                db.session.add(tool)
+
+            answer = Answer(tool=tool, question=question, user=user, position=position)
+            db.session.add(answer)
+
+        db.session.commit()
+
+        # Calculate the winners from all votes
+        answers = Answer.query.filter_by(question=question).filter(Answer.user_id != 0).order_by('user','position asc').all()
+        
+        rankings = []
+        for user, user_answers in groupby(answers, key=lambda answer: answer.user):
+            rankings.append([answer.tool_id for answer in user_answers])
+
+        ranking = coalesce_rankings(rankings)
+        canonical_answers = [Answer(tool_id=answer, question=question, user_id=0, position=position)
+                for position, answer in enumerate(ranking)]
+
+        [db.session.add(answer) for answer in canonical_answers]
+        db.session.commit()
+
+    @property
+    def top_answers(self):
+        return Tool.query.join(Answer).filter(Answer.question==self).filter(Answer.user_id==0).order_by(Answer.position.asc()).all()
+
+    def get_answers(self, user):
+        if not user:
+            return None
+        else:
+            return Tool.query.join(Answer).filter(Answer.question==self).filter(Answer.user==user).order_by(Answer.position.asc()).all()
+
 
 class Tool(db.Model):
     __tablename__ = 'tools'
@@ -136,15 +180,8 @@ def show(id, slug=''):
     question = Question.query.get_or_404(id)
     all_tools = Tool.query.all()
     tool_texts = json.dumps([tool.name for tool in all_tools])
-
-    if g.current_user:
-        your_answers = Tool.query.join(Answer).filter(Answer.question_id==id).filter(Answer.user_id==g.current_user.id
-            ).order_by(Answer.position.asc()).all()
-    else:
-        your_answers = None
-
-    canonical_answers = Tool.query.join(Answer).filter(Answer.question_id==id).filter(Answer.user_id==0).order_by(Answer.position.asc()).all()
-
+    your_answers = question.get_answers(g.current_user)
+    canonical_answers = question.top_answers 
     return render_template('show.html', question=question, tool_texts=tool_texts, 
             your_answers=your_answers, canonical_answers=canonical_answers)
 
@@ -153,39 +190,8 @@ def show(id, slug=''):
 def answer(question_id):
     tools = request.json
     question = Question.query.get_or_404(question_id)
-
-    # delete existing answers for this user,question, and also the cached answers
-    db.session.query(Answer).filter_by(question=question, user=g.current_user).delete()
-    db.session.query(Answer).filter_by(question=question, user_id=0).delete()
-
-    for position, name in enumerate(tools):
-        # find or create the tool.
-        # NOTE: could speed this up by doing an 'IN' query earlier
-        tool = Tool.query.filter_by(name=name).first()
-        if not tool:
-            tool = Tool(name=name)
-            db.session.add(tool)
-
-        answer = Answer(tool=tool, question=question, user=g.current_user, position=position)
-        db.session.add(answer)
-
-    db.session.commit()
-
-    # Calculate the winners from all votes
-    answers = Answer.query.filter_by(question=question).filter(Answer.user_id != 0).order_by('user','position asc').all()
-    
-    rankings = []
-    for user, user_answers in groupby(answers, key=lambda answer: answer.user):
-        rankings.append([answer.tool_id for answer in user_answers])
-
-    ranking = coalesce_rankings(rankings)
-    canonical_answers = [Answer(tool_id=answer, question=question, user_id=0, position=position)
-            for position, answer in enumerate(ranking)]
-
-    [db.session.add(answer) for answer in canonical_answers]
-    db.session.commit()
-
-    return ''
+    question.save_answer(g.current_user, tools)
+    return 'success'
 
 
 from pywebfinger import finger
@@ -224,18 +230,6 @@ def logout():
     flash(u'You were signed out')
     return redirect(oid.get_next_url())
 
-
-
-
-def question_url(question):
-    return url_for('show', id=question['_id'], slug=question['slug'])
-
-
-
-
-
-
-app.jinja_env.globals['question_url'] = question_url
 
 
 if __name__ == '__main__':
