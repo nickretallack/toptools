@@ -60,16 +60,15 @@ $(document).ready(function(){
 <h2>Suggest a Tool</h2>
 <form id="suggest-tool">
     <input type="text" name="tool" id="tool">
-    <button>Add Tool</button>
+    <button>Suggest</button>
 </form>
 
 {% endif %}
 
 <div class="left_half">
-<h2>Best Tools</h2>
-TODO
+<h2>Top Choices</h2>
 <ol id="tools">
-{% for tool in question.tools %}
+{% for tool in canonical_answers %}
 <li>{{ tool.name }}
 <div class="smallnote">
     <label for="used_{{tool.name}}">
@@ -82,7 +81,7 @@ TODO
 
 {% if g.current_user %}
 <div class="right_half">
-<h2>Your Faves</h2>
+<h2>Your Choices</h2>
 <ol id="fave_tools" class="sortable">
     {% for tool in your_answers %}
     <li><a class="remove">x</a> <span class="tool">{{tool.name}}</span>

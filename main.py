@@ -1,12 +1,15 @@
 from flask import Flask, request, session, g, redirect, abort, url_for, render_template, flash
 from flaskext.sqlalchemy import SQLAlchemy
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship, backref, joinedload
 from slugify import slugify
 import json
+from itertools import groupby
+from coalesce import coalesce_rankings
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:5sporks@localhost/bestlibs'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgres://postgres:sporks@localhost/toptools'
+app.config['SQLALCHEMY_ECHO'] = True
 app.secret_key = "Secret key for testing purposes only"
 db = SQLAlchemy(app)
 
@@ -25,13 +28,20 @@ def set_current_user():
     else:
         g.current_user = None
 
-
+def setup_database():
+    db.create_all()
+    cache_user = User(id=0, name='Cache User')
+    db.session.add(cache_user)
+    db.session.commit()
 
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(80))
     openid = db.Column(db.Unicode(255))
+
+    def __repr__(self):
+        return "<User %s %s:%s>" % (self.id, self.name, self.openid)
 
 class Question(db.Model):
     __tablename__ = 'questions'
@@ -47,6 +57,9 @@ class Question(db.Model):
         self.slug = slugify(text)
         self.created_by = g.current_user
 
+    def __repr__(self):
+        return "<Question %s: %s>" % (self.id, self.text)
+
     @property
     def url(self):
         return url_for('show', id=self.id, slug=self.slug)
@@ -61,6 +74,9 @@ class Tool(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Unicode(80))
 
+    def __repr__(self):
+        return "<Tool %s: %s>" % (self.id, self.name)
+
 class Answer(db.Model):
     __tablename__ = 'answers'
     user_id = db.Column(db.Integer, ForeignKey(User.id), primary_key=True)
@@ -71,6 +87,10 @@ class Answer(db.Model):
     tool = relationship(Tool)
     question = relationship(Question)
     user = relationship(User)
+
+    def __repr__(self):
+        return "\n<Answer\n\tby:%s\n\ttool:%s\n\tposition:%s\n\tquestion:%s>\n" % (
+                self.user, self.tool, self.position, self.question)
 
 
 @app.route('/')
@@ -123,7 +143,10 @@ def show(id, slug=''):
     else:
         your_answers = None
 
-    return render_template('show.html', question=question, tool_texts=tool_texts, your_answers=your_answers)
+    canonical_answers = Tool.query.join(Answer).filter(Answer.question_id==id).filter(Answer.user_id==0).order_by(Answer.position.asc()).all()
+
+    return render_template('show.html', question=question, tool_texts=tool_texts, 
+            your_answers=your_answers, canonical_answers=canonical_answers)
 
 
 @app.route('/answer/<question_id>', methods=['POST'])
@@ -131,8 +154,9 @@ def answer(question_id):
     tools = request.json
     question = Question.query.get_or_404(question_id)
 
-    # delete existing answers for this user,question
+    # delete existing answers for this user,question, and also the cached answers
     db.session.query(Answer).filter_by(question=question, user=g.current_user).delete()
+    db.session.query(Answer).filter_by(question=question, user_id=0).delete()
 
     for position, name in enumerate(tools):
         # find or create the tool.
@@ -146,14 +170,27 @@ def answer(question_id):
         db.session.add(answer)
 
     db.session.commit()
+
+    # Calculate the winners from all votes
+    answers = Answer.query.filter_by(question=question).filter(Answer.user_id != 0).order_by('user','position asc').all()
+    
+    rankings = []
+    for user, user_answers in groupby(answers, key=lambda answer: answer.user):
+        rankings.append([answer.tool_id for answer in user_answers])
+
+    ranking = coalesce_rankings(rankings)
+    canonical_answers = [Answer(tool_id=answer, question=question, user_id=0, position=position)
+            for position, answer in enumerate(ranking)]
+
+    [db.session.add(answer) for answer in canonical_answers]
+    db.session.commit()
+
     return ''
 
 
 from pywebfinger import finger
 from flaskext.openid import OpenID
-oid = OpenID('log')
-
-
+oid = OpenID(app, 'log')
 
 @app.route('/login', methods=['POST','GET'])
 @oid.loginhandler
