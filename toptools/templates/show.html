@@ -96,6 +96,11 @@ $(document).ready(function(){
         <a href="{{question.edit_url}}">Edit</a>
         {% endif %}
 </span></h1>
+
+{% if question.created_by == g.current_user %}
+<p>You created this question recently, so <a href="{{question.edit_url}}">you can edit it</a>.</p>
+{% endif %}
+
 {% if not g.current_user %}
 <p>If you would like to answer this question, please log in above.</p>
 {% else %}

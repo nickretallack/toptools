@@ -55,8 +55,9 @@ def create():
 def edit_question(id, slug=''):
     question = Question.query.get_or_404(id)
     if request.method == 'POST':
-        if request.form['button'] == 'delete':
+        if request.form['button'].lower() == 'delete':
             db.session.delete(question)
+            db.session.commit()
             return redirect(url_for('front'))
         else: # assume it's 'save'
             question.text = request.form['question']
