@@ -1,10 +1,14 @@
 {% extends 'layout.html' %}
 {% block body %}
 <h1>Is your question already answered?</h1>
-<p>Take a look at the similar questions below.  If yours isn't there, create it!
+{% if g.current_user %}
+<p>Take a look at the similar questions below.  If yours isn't there, create it!</p>
+{% else %}
+<p>You'll need to log in above in order to ask a new question.</p>
+{% endif %}
 <form method="post" action="{{ url_for('create') }}">
     <input type="text" name="question" value="{{question_text}}">
-    <button type="submit">Create</button>
+    <button type="submit" {% if not g.current_user %}disabled{% endif %}>Create</button>
 </form>
 
 <ul>

@@ -8,39 +8,85 @@ $(document).ready(function(){
     var tool_template = tmpl("your_tool_template")
     var answer_url = "{{ url_for('answer',question_id=question.id)}}"
 
+    function things_have_changed(){
+        $('#save').attr('disabled',null).text('Save')
+    }
+
+    function check_the_box(lowercase_tool_name, checked){
+        $('#tools [value='+lowercase_tool_name+']').attr('checked', checked ? 'checked' : null)
+    }
+
+    function add_a_tool(tool_name){
+        fave_tools.append(tool_template({name:tool_name}))
+        things_have_changed()
+    }
+
+    // Hackishly check the checkboxes.  This could be done server-side.
+    _.each(fave_tools.find('.tool').toArray(), function(node){
+        check_the_box($(node).attr('data-lowercase-name'), true)
+    })
+
     tool_field.autocomplete(data);
-    fave_tools.sortable()
+    fave_tools.sortable({stop:things_have_changed})
 
     $("#suggest-tool").submit(function(event){
         event.preventDefault()
 
         var tool_name = tool_field.val()
         tool_field.val('')
-        var node = tool_template({name:tool_name})
-        fave_tools.append(node)
+
+        var lowercase_tool_name = tool_name.toLowerCase()
+        check_the_box(lowercase_tool_name, true)
+
+        // Don't add the same tool twice
+        if (fave_tools.find('.tool[data-lowercase-name='+lowercase_tool_name+']').length) return
+
+        add_a_tool(tool_name)
     })
 
     $('#save').click(function(event){
         event.preventDefault()
+        var save_button = $(event.target)
+        save_button.attr('disabled','disabled').text('Saving...')
+
         var tool_nodes = fave_tools.find('.tool').toArray()
         var tool_list = _.map(tool_nodes, function(node){
             return $(node).text()
         })
         var data = JSON.stringify(tool_list)
-        $.ajax({url:answer_url, data:data, type:'POST', contentType:'application/json'})
-        console.debug(tool_list)
+        $.ajax({url:answer_url, data:data, type:'POST', contentType:'application/json',
+            success:function(data){
+                save_button.text("Saved")
+                window.location.reload()
+            }
+        })
     })
 
     $('.remove').live('click', function(event){
         event.preventDefault()
-        $(this).parents('li').remove()
+        var item = $(event.target).parents('li')
+        var lowercase_tool_name = item.find('.tool').attr('data-lowercase-name')
+        check_the_box(lowercase_tool_name, false)
+        item.remove()
+        things_have_changed()
+    })
+
+    $('[name=used]').live('change', function(event){
+        var checkbox = $(event.target)
+        var tool_name = checkbox.attr('data-name')
+        if (checkbox.attr('checked')){ // added
+            add_a_tool(tool_name)
+        } else { // removed
+            fave_tools.find('[data-lowercase-name='+tool_name.toLowerCase()+']').parents('li:first').remove()
+            things_have_changed()
+        }
     })
 
 });
 </script>
 
 <script type="text/html" id="your_tool_template">
-    <li><a class="remove">x</a> <span class="tool"><%= name %></span>
+    <li><a class="remove">x</a> <span class="tool" data-lowercase-name="<%= name.toLowerCase() %>"><%= name %></span>
 </script>
 
 {% endblock%}
@@ -51,11 +97,11 @@ $(document).ready(function(){
         {% endif %}
 </span></h1>
 {% if not g.current_user %}
-<p>If you would like to answer this question, please Log In above.</p>
+<p>If you would like to answer this question, please log in above.</p>
 {% else %}
-<p>To answer this question, suggest tools you have used for this task and arrange them into the order of your preference.</p>
+<p>To answer this question, suggest tools you have used for this task and arrange them in the order of your preference.</p>
 
-<button id="save">Save</button> when you are finished editing.
+<p>Click <button id="save" disabled>Save</button> when you are finished.</p>
 
 <h2>Suggest a Tool</h2>
 <form id="suggest-tool">
@@ -66,14 +112,14 @@ $(document).ready(function(){
 {% endif %}
 
 <div class="left_half">
-<h2>Top Choices</h2>
+<h2>Top Tools</h2>
 <ol id="tools">
 {% for tool in canonical_answers %}
 <li>{{ tool.name }}
 <div class="smallnote">
-    <label for="used_{{tool.name}}">
+    <label for="used_{{tool.name.lower()}}">
         {% if g.current_user %}
-        <input type="checkbox" id="used_{{tool.name}}" name="used" value="{{tool.name}}">
+        <input type="checkbox" id="used_{{tool.name.lower()}}" name="used" data-name="{{tool.name}}" value="{{tool.name.lower()}}">
         I've used this</label>
         {% endif %}
 </div>
@@ -83,10 +129,10 @@ $(document).ready(function(){
 
 {% if g.current_user %}
 <div class="right_half">
-<h2>Your Choices</h2>
+<h2>Your Tools</h2>
 <ol id="fave_tools" class="sortable">
     {% for tool in your_answers %}
-    <li><a class="remove">x</a> <span class="tool">{{tool.name}}</span>
+    <li><a class="remove">x</a> <span class="tool" data-lowercase-name="{{tool.name.lower()}}">{{tool.name}}</span>
     {% endfor %}
 
 </ol>

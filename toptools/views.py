@@ -1,14 +1,17 @@
 from models import *
 
 from flask import Flask, request, session, g, redirect, abort, url_for, render_template, flash
-from slugify import slugify
+from pywebfinger import finger
+from flaskext.openid import OpenID
 import json
-
 import logging
+
 file_handler = logging.FileHandler("log/log.txt")
 file_handler.setLevel(logging.DEBUG)
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.DEBUG)
+oid = OpenID(app, 'log')
+
 
 @app.before_request
 def set_current_user():
@@ -18,11 +21,11 @@ def set_current_user():
     else:
         g.current_user = None
 
+
 @app.route('/')
 def front():
     all_questions = Question.query.all()
     question_texts = json.dumps([question.text for question in all_questions])
-    print question_texts
     return render_template('front.html', popular_questions=all_questions, question_texts=question_texts)
 
 
@@ -46,6 +49,7 @@ def create():
     db.session.add(question)
     db.session.commit()
     return redirect(question.url)
+
 
 @app.route('/<id>/<slug>/edit', methods=['GET','POST'])
 def edit_question(id, slug=''):
@@ -80,10 +84,6 @@ def answer(question_id):
     return 'success'
 
 
-from pywebfinger import finger
-from flaskext.openid import OpenID
-oid = OpenID(app, 'log')
-
 @app.route('/login', methods=['POST','GET'])
 @oid.loginhandler
 def login():
@@ -98,6 +98,7 @@ def login():
             return render_template('webfinger.html', email=email)
     return oid.fetch_error() or redirect(url_for('front'))
 
+
 @oid.after_login
 def after_login(info):
     openid = info.identity_url
@@ -111,6 +112,7 @@ def after_login(info):
 
     flash(u'Successfully signed in')
     return redirect(oid.get_next_url())
+
 
 @app.route('/logout')
 def logout():

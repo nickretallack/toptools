@@ -2,8 +2,9 @@ from toptools import app
 from flaskext.sqlalchemy import SQLAlchemy
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship, backref, joinedload
-from flask import url_for
 from itertools import groupby
+from slugify import slugify
+from flask import Flask, request, session, g, redirect, abort, url_for, render_template, flash
 
 from coalesce import coalesce_rankings
 
