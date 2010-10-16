@@ -44,6 +44,8 @@ def search():
 
 @app.route('/create', methods=['POST'])
 def create():
+    if not g.current_user:
+        abort(404)
     question_text = request.form['question']
     question = Question(question_text)
     db.session.add(question)
@@ -54,6 +56,8 @@ def create():
 @app.route('/<id>/<slug>/edit', methods=['GET','POST'])
 def edit_question(id, slug=''):
     question = Question.query.get_or_404(id)
+    if question.created_by != g.current_user:
+        abort(404)
     if request.method == 'POST':
         if request.form['button'].lower() == 'delete':
             db.session.delete(question)
@@ -79,6 +83,8 @@ def show(id, slug=''):
 
 @app.route('/answer/<question_id>', methods=['POST'])
 def answer(question_id):
+    if not g.current_user:
+        abort(404)
     tools = request.json
     question = Question.query.get_or_404(question_id)
     question.save_answer(g.current_user, tools)
@@ -117,6 +123,8 @@ def after_login(info):
 
 @app.route('/logout')
 def logout():
+    if not g.current_user:
+        abort(404)
     session.pop('openid', None)
     flash(u'You were signed out')
     return redirect(oid.get_next_url())
