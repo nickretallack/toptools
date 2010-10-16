@@ -1,0 +1,7 @@
+{% extends 'layout.html' %}
+{% block body %}
+<h1>You need to set up Webfinger</h1>
+<p>It looks like your email address isn't associated with an OpenID yet.
+You may need to edit your webfinger profile.</p>
+<p><a href="http://webfinger.org/lookup/{{email}}">Visit WebFinger.org to find out how</a>.</p>
+{% endblock %}

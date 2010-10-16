@@ -72,8 +72,10 @@ $(document).ready(function(){
 <li>{{ tool.name }}
 <div class="smallnote">
     <label for="used_{{tool.name}}">
+        {% if g.current_user %}
         <input type="checkbox" id="used_{{tool.name}}" name="used" value="{{tool.name}}">
         I've used this</label>
+        {% endif %}
 </div>
 {% endfor %}
 </ol>

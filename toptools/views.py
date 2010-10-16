@@ -29,7 +29,13 @@ def front():
 @app.route('/search')
 def search():
     question_text = request.args.get('q','')
-    search_results = []
+
+    # If you used the autocomplete, there may be an exact match in the database
+    matched_question = Question.query.filter(Question.text==question_text).first()
+    if matched_question:
+        return redirect(url_for('show', id=matched_question.id, slug=matched_question.slug))
+
+    search_results = Question.query.all()
     return render_template('search.html', question_text=question_text, search_results=search_results)
 
 
@@ -81,14 +87,16 @@ oid = OpenID(app, 'log')
 @app.route('/login', methods=['POST','GET'])
 @oid.loginhandler
 def login():
-#    if g.current_user is not None:
-#        return redirect(oid.get_next_url())
+    if g.current_user is not None:
+        return redirect(oid.get_next_url())
     if request.method == 'POST':
-        email_address = request.form['email']
-        info = finger(email_address, True)
-        openid = info.open_id
-        return oid.try_login(openid, ask_for=['email', 'fullname', 'nickname'])
-    return oid.fetch_error()
+        email = request.form['email']
+        info = finger(email, True)
+        if info.open_id:
+            return oid.try_login(info.open_id, ask_for=['email', 'fullname', 'nickname'])
+        else:
+            return render_template('webfinger.html', email=email)
+    return oid.fetch_error() or redirect(url_for('front'))
 
 @oid.after_login
 def after_login(info):
