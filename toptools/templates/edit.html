@@ -1,4 +1,5 @@
 {% extends 'layout.html' %}
+{% block title %}Editing Question: {{question.text}}{% endblock %}
 {% block body %}
 <h1>Editing Question: {{question.text}}</h1>
 <form method="post" action="{{ question.edit_url }}">
