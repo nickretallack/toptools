@@ -90,7 +90,7 @@ def answer(question_id):
     question.save_answer(g.current_user, tools)
     return 'success'
 
-
+from urllib2 import URLError # TODO: put this into pywebfinger
 @app.route('/login', methods=['POST','GET'])
 @oid.loginhandler
 def login():
@@ -98,11 +98,14 @@ def login():
         return redirect(oid.get_next_url())
     if request.method == 'POST':
         email = request.form['email']
-        info = finger(email, True)
-        if info.open_id:
-            return oid.try_login(info.open_id, ask_for=['email', 'fullname', 'nickname'])
-        else:
-            return render_template('webfinger.html', email=email)
+	try:
+        	info = finger(email, True)
+        	if info.open_id:
+            		return oid.try_login(info.open_id, ask_for=['email', 'fullname', 'nickname'])
+	except URLError:
+		pass
+	# Both fall through to the error case
+        return render_template('webfinger.html', email=email)
     return oid.fetch_error() or redirect(url_for('front'))
 
 
