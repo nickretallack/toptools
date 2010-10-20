@@ -58,7 +58,6 @@ class Question(db.Model):
 
         # delete existing answers for this user,question, and also the cached answers
         db.session.query(Answer).filter_by(question=question, user=user).delete()
-        db.session.query(Answer).filter_by(question=question, user_id=0).delete()
 
         for position, name in enumerate(answers):
             # find or create the tool.
@@ -72,16 +71,20 @@ class Question(db.Model):
             db.session.add(answer)
 
         db.session.commit()
+        self.calculate_answer()
 
-        # Calculate the winners from all votes
-        answers = Answer.query.filter_by(question=question).filter(Answer.user_id != 0).order_by('user','position asc').all()
+    def calculate_answer(self):
+        question = self
+
+        db.session.query(Answer).filter_by(question=question, user_id=0).delete()
+        answers = db.session.query(Answer).filter_by(question=question).filter(Answer.user_id != 0).order_by('user','position asc').all()
         
         rankings = []
         for user, user_answers in groupby(answers, key=lambda answer: answer.user):
-            rankings.append([answer.tool_id for answer in user_answers])
+            rankings.append([str(answer.tool_id) for answer in user_answers])
 
         ranking = coalesce_rankings(rankings)
-        canonical_answers = [Answer(tool_id=answer, question=question, user_id=0, position=position)
+        canonical_answers = [Answer(tool_id=int(answer), question=question, user_id=0, position=position)
                 for position, answer in enumerate(ranking)]
 
         [db.session.add(answer) for answer in canonical_answers]
