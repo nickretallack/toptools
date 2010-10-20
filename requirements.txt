@@ -1,7 +1,7 @@
 flask
 Flask-OpenID
 Flask-SQLAlchemy
-psycopg2
+#psycopg2
 -e git+http://github.com/jcarbaugh/python-xrd.git#egg=xrd
 -e svn+http://stv.googlecode.com/svn/trunk/
 iso8601
